@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, status
-
+from fastapi.exceptions import RequestValidationError
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -48,3 +50,12 @@ def get_one_post(post_id:int):
         status_code=status.HTTP_404_NOT_FOUND,
         detail="post not found"
     )
+
+
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request: Request, exception: RequestValidationError):
+    return JSONResponse(
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content = {"detail":exception.errors()}
+    )
+
