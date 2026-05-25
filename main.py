@@ -5,37 +5,46 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from schemas import PostCreate, PostResponse, UserCreate, UserResponse, PostUpdate
 from sqlalchemy import select
-from sqlalchemy.orm import Session
-
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import models
 from db import Base, engine, get_db
+from contextlib import asynccontextmanager
 
-Base.metadata.create_all(bind = engine)
+# Base.metadata.create_all(bind = engine)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get('/')
 def get_message():
     return {"message":"hello"}
 
-@app.get('/api/posts', response_model=list[PostResponse])
-def get_posts():
-    return posts
+# @app.get('/api/posts', response_model=list[PostResponse])
+# def get_posts():
+#     return posts
 
-@app.get('/api/post/{post_id}', response_model = PostResponse)
-def get_one_post(post_id:int):
-    for post in posts:
-        if post["id"] == post_id:
-            return post
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="post not found"
-    )
+# @app.get('/api/post/{post_id}', response_model = PostResponse)
+# def get_one_post(post_id:int):
+#     for post in posts:
+#         if post["id"] == post_id:
+#             return post
+#     raise HTTPException(
+#         status_code=status.HTTP_404_NOT_FOUND,
+#         detail="post not found"
+#     )
 
 @app.post('/api/post', response_model=PostResponse, status_code=status.HTTP_201_CREATED)
-def create_post(post:PostCreate, db:Annotated[Session, Depends(get_db)]):
-    result = db.execute(
+async def create_post(post:PostCreate, db:Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
         select(models.User).where(models.User.id == post.user_id)
     )
 
@@ -54,14 +63,14 @@ def create_post(post:PostCreate, db:Annotated[Session, Depends(get_db)]):
     )
 
     db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
+    await db.commit()
+    await db.refresh(new_post, attribute_names=["author"])
     return new_post
 
 @app.get('/api/posts',response_model=list[PostResponse])
-def get_all_posts(db:Annotated[Session, Depends(get_db)]):
-    result = db.execute(
-        select(models.Post)
+async def get_all_posts(db:Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(
+        select(models.Post).options(selectinload(models.Post.author))
     )
 
     return result.scalars().all()
@@ -191,10 +200,20 @@ def get_user(user_id:int, db:Annotated[Session, Depends(get_db)]):
         detail="User ID not found"
     )
 
-
+@app.exception_handler(StarletteHTTPException)
+async def general_http_exception_handler(request:Request, exception: StarletteHTTPException):
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=exception.status_code,
+            content = {"detail": exception.detail}
+        )
+    return JSONResponse(
+            status_code=exception.status_code,
+            content = {"detail": exception.detail}
+        )
 
 @app.exception_handler(RequestValidationError)
-def validation_exception_handler(request:Request, exception:RequestValidationError):
+async def validation_exception_handler(request:Request, exception:RequestValidationError):
     return JSONResponse(
         status_code = status.HTTP_422_UNPROCESSABLE_CONTENT,
         content = {"detail": exception.errors()}
