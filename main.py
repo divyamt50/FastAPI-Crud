@@ -33,19 +33,30 @@ def get_one_post(post_id:int):
         detail="post not found"
     )
 
-# @app.post('/api/post', response_model=PostResponse, status_code=status.HTTP_201_CREATED)
-# def add_post(post:PostCreate, db:Annotated[Session, Depends(get_db)]):
-#              result = 
-#     new_post = {
-#             "id":len(posts) + 1,
-#             "title":post.title,
-#             "description":post.description,
-#             "author":post.author,
-#             "date_posted":"27 March 2027"
-#         }
-#     posts.append(new_post)
-#     return new_post
+@app.post('/api/post', response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+def create_post(post:PostCreate, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.User).where(models.User.id == post.user_id)
+    )
 
+    user_instance = result.scalars().first()
+
+    if not user_instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    new_post = models.Post(
+        title = post.title,
+        content = post.content,
+        user_id = post.user_id
+    )
+
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
 
 @app.post("/api/user", response_model=UserResponse, status = status.HTTP_201_CREATED)
 def create_user(user:UserCreate, db:Annotated[Session, Depends(get_db)]):
