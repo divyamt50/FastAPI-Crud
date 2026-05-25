@@ -58,6 +58,29 @@ def create_post(post:PostCreate, db:Annotated[Session, Depends(get_db)]):
     db.refresh(new_post)
     return new_post
 
+@app.get('/api/posts',response_model=list[PostResponse])
+def get_all_posts(db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.Post)
+    )
+
+    return result.scalars().all()
+
+@app.get('/api/post/{id}', response_model=PostResponse)
+def get_one_post(post_id:int, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.Post).where(models.Post.id == post_id)
+    )
+
+    post_instance = result.scalars.first()
+
+    if not post_instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail = "Post not found"
+        )
+    return post_instance
+
 @app.post("/api/user", response_model=UserResponse, status = status.HTTP_201_CREATED)
 def create_user(user:UserCreate, db:Annotated[Session, Depends(get_db)]):
     result = db.execute(
