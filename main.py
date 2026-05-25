@@ -1,8 +1,16 @@
-from fastapi import FastAPI, HTTPException, status
+from typing import Annotated
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from schemas import PostCreate, PostResponse
+from schemas import PostCreate, PostResponse, UserCreate, UserResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+import models
+from db import Base, engine, get_db
+
+Base.metadata.create_all(bind = engine)
 
 app = FastAPI()
 
