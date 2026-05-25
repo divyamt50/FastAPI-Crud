@@ -81,3 +81,9 @@ def validation_exception_handler(request: Request, exception: RequestValidationE
         content = {"detail":exception.errors()}
     )
 
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request:Request, exception:RequestValidationError):
+    return JSONResponse(
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content = {"detail": exception.errors()}
+    )
