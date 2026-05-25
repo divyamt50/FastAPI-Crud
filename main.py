@@ -121,6 +121,24 @@ def post_path(id:int, post_data:PostUpdate, db:Annotated[Session, Depends(get_db
     db.refresh(post_instance)
     return post_instance
 
+@app.delete('/api/post_delete/{id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id:int, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.Post).where(models.Post.id == id)
+    )
+
+    post = result.scalars().first()
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail = "post not found"
+        )
+    
+    db.delete(post)
+    db.commit()
+    return None
+
 
 @app.post("/api/user", response_model=UserResponse, status = status.HTTP_201_CREATED)
 def create_user(user:UserCreate, db:Annotated[Session, Depends(get_db)]):
