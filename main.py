@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from schemas import PostCreate, PostResponse, UserCreate, UserResponse
+from schemas import PostCreate, PostResponse, UserCreate, UserResponse, PostUpdate
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,47 @@ def get_one_post(post_id:int, db:Annotated[Session, Depends(get_db)]):
             detail = "Post not found"
         )
     return post_instance
+
+@app.put('/api/post_update/{id}', response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+def put_post(id:int, post_data:PostCreate,db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.Post).where(models.Post.id == id)
+    )
+    post_instance = result.scalars().first()
+
+    if not post_instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="post not found"
+        )
+    
+    post_instance.title = post_data.title
+    post_instance.content = post_data.content
+    db.commit()
+    db.refresh(post_instance)
+    return post_instance
+
+@app.patch('/api/post_patch/{id}', response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+def post_path(id:int, post_data:PostUpdate, db:Annotated[Session, Depends(get_db)]):
+    result = db.execute(
+        select(models.Post).where(models.Post.id == id)
+    )
+    post_instance = result.scalars().first()
+
+    if not post_instance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="post not found"
+        )
+    
+    updated_data = post_data.model_dump(exclude_unset=True)
+    for field, value in updated_data.values():
+        setattr(post_instance, field, value)
+
+    db.commit()
+    db.refresh(post_instance)
+    return post_instance
+
 
 @app.post("/api/user", response_model=UserResponse, status = status.HTTP_201_CREATED)
 def create_user(user:UserCreate, db:Annotated[Session, Depends(get_db)]):
