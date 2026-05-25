@@ -1,16 +1,30 @@
-from pydantic import ConfigDict, BaseModel, Field
-
+from pydantic import ConfigDict, BaseModel, Field, EmailStr
+from datetime import datetime
+from __future__ import annotations
 
 class PostBase(BaseModel):
     title:str= Field(min_length=2, max_length=20)
     content:str = Field(min_length=10, max_length=1000)
-    author:str=Field(min_length = 2, max_length=40)
 
 class PostCreate(PostBase):
-    pass
+    user_id:int
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)
 
     id:int
     date_posted:str
+    user_id:int
+    author: UserResponse
+
+
+class UserBase(BaseModel):
+    username:str = Field(min_length=2, max_length=50)
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password:str = Field(min_length=5)
+
+class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+    id:int
