@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+
+
 from pydantic import ConfigDict, BaseModel, Field, EmailStr
 from datetime import datetime
-from __future__ import annotations
 
 class PostBase(BaseModel):
     title:str= Field(min_length=2, max_length=20)
