@@ -10,7 +10,7 @@ class PostBase(BaseModel):
     content:str = Field(min_length=10, max_length=1000)
 
 class PostCreate(PostBase):
-    user_id:int
+    pass
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)
@@ -35,3 +35,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id:int
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
