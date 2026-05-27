@@ -24,7 +24,7 @@ class PostUpdate(PostBase):
     title:str|None = Field(default = None, min_length=1, max_length=100)
     content:str|None = Field(default= None, min_length=1)
 
-class PostPagination(PostBase):
+class PostPagination(BaseModel):
     posts:list[PostResponse]
     total:int
     skip:int

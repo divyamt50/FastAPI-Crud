@@ -1,12 +1,12 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import models
 from db import get_db
-from schemas import PostCreate, PostResponse, PostUpdate
+from schemas import PostCreate, PostResponse, PostUpdate, PostPagination
 from auth import get_current_user
 
 router = APIRouter(
@@ -14,12 +14,32 @@ router = APIRouter(
     tags=["posts"],
 )
 
-@router.get("", response_model=list[PostResponse])
-async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
+@router.get("", response_model=list[PostPagination])
+async def get_posts(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        skip:Annotated[int, Query(ge=0)] = 0,
+        limit:Annotated[int, Query(ge=1,le=100)] = 10
+    ):
+    count_query = select(func.count()).select_from(models.Post)
+    total = await db.scalar(count_query) or 0
+
     result = await db.execute(
-        select(models.Post).options(selectinload(models.Post.author))
+        select(models.Post)
+        .options(selectinload(models.Post.author))
+        .order_by(models.Post.id.desc())
+        .offset(skip)
+        .limit(limit)
     )
-    return result.scalars().all()
+    posts = result.scalars().all()
+    has_more = (skip + len(posts)) <= total
+
+    return PostPagination(
+        posts = posts,
+        limit = limit,
+        total = total,
+        skip = skip,
+        has_more = has_more
+    )
 
 @router.get("/{post_id}", response_model=PostResponse)
 async def get_post(post_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
