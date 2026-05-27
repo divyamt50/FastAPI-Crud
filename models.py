@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import UTC, datetime
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db import Base
 
@@ -25,3 +25,12 @@ class Post(Base):
     date_posted:Mapped[datetime] = mapped_column(DateTime(timezone=True), default = lambda:datetime.now(UTC))
 
     author:Mapped[User] = relationship(back_populates="posts")
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id:Mapped[int] = mapped_column(primary_key=True)
+    token_hash:Mapped[str] = mapped_column(String, unique=True, index=True)
+    user_id:Mapped[int] = mapped_column(ForeignKey("users.id"))
+    expires_at:Mapped[datetime] = mapped_column(DateTime)
+    used:Mapped[bool] = mapped_column(Boolean, default=False)

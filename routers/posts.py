@@ -14,7 +14,7 @@ router = APIRouter(
     tags=["posts"],
 )
 
-@router.get("", response_model=list[PostPagination])
+@router.get("", response_model=PostPagination)
 async def get_posts(
         db: Annotated[AsyncSession, Depends(get_db)],
         skip:Annotated[int, Query(ge=0)] = 0,
@@ -31,7 +31,7 @@ async def get_posts(
         .limit(limit)
     )
     posts = result.scalars().all()
-    has_more = (skip + len(posts)) <= total
+    has_more = (skip + len(posts)) < total
 
     return PostPagination(
         posts = posts,
